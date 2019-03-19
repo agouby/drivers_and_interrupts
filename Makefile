@@ -10,8 +10,8 @@ clean:
 test:
 	make clean
 	make
-	dmesg -C
 ifeq ($(RET),0)
 	rmmod main
 endif
+	dmesg -C
 	insmod main.ko
