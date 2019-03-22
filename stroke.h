@@ -9,6 +9,8 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/time.h>
+#include <linux/seq_file.h>
+
 
 struct stroke_s {
 	unsigned char key;
@@ -26,6 +28,9 @@ struct keycode_s {
 };
 
 extern struct keycode_s keytable[];
+extern int keytable_len;
+
+#define COUNT_OF(array) (sizeof(array) / sizeof(*array))
 
 int my_open(struct inode *toto, struct file *tata);
 ssize_t my_read(struct file *f, char __user *buf, size_t size, loff_t *p);

