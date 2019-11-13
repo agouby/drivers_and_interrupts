@@ -1,7 +1,6 @@
 obj-m += keylogger.o
-keylogger-objs := main.o keytable.o
 
-RET=$(shell lsmod | grep keylogger > /dev/null ; echo $$?)
+RET := $(shell lsmod | grep keylogger > /dev/null ; echo $$?)
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
