@@ -12,6 +12,7 @@ test:
 	make
 ifeq ($(RET),0)
 	rmmod keylogger
+	rm /tmp/keylogger
 endif
 	dmesg -C
 	insmod keylogger.ko
