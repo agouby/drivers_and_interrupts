@@ -183,7 +183,7 @@ static void get_stroke_time(struct tm *time)
 
 static const struct keycode_s *get_table_entry(int scancode, int state)
 {
-	static unsigned char toggle[3] = {0, 0, 1};
+	static unsigned char toggle[3] = {0, 0, 0};
 	const struct keycode_s *table_entry;
 
 	if (IS_CAPSLOCK(scancode) && IS_PRESSED(state)) {
